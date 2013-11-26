@@ -56,7 +56,8 @@ function listLatestForAll(req, res, next) {
 	console.log("Quering..."+req.params.name);
 
 // This will group by server and release. It will have multiple server entries because each server will have multiple releases.
-	deployment.aggregate([{ $project: { server: 1, release: 1, datestamp: 1 }, $group: { _id: { release: "$release" },  mostRecent: { $max: "$datestamp" } } } ], 
+	//deployment.aggregate([{ $project: { server: 1, release: 1, datestamp: 1 }, $group: { _id: { release: "$release" },  mostRecent: { $max: "$datestamp" } } } ], 
+	deployment.aggregate([{ $group: { _id: { release: "$release" },  mostRecent: { $max: "$datestamp" } } } ], 
 		function(err, deploys) { res.send(deploys); });
 }
 
