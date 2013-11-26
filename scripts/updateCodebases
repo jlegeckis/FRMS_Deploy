@@ -1,0 +1,9 @@
+#!/bin/bash
+CONFIG="/etc/codebases.conf"
+for CONF in `cat ${CONFIG}`
+do
+	cd ${CONF}
+	git pull -q
+	echo $?
+#	curl -H 'Header: application/json' somewhere.com/deploy/live -d '{"server":"`HOSTNAME`", "codebase":"${CONF}", "location":"d13112111_N240", "md5":"1e9d37b9546a0eeb4221ab167aa6cda7"}'
+done
