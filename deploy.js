@@ -8,6 +8,7 @@ var deploySchema = new mongoose.Schema({
 	codebase: { type: String },
 	server: { type: String },
 	success: { type: Number },
+	environment: { type: String },
 });
 // Get environment currently running under
 var env = "live";
@@ -32,7 +33,8 @@ function respond(req, res, next) {
 		location: req.params.location,
   		codebase: req.params.codebase,
 		server: req.params.server,
-		success: 1
+		success: 1,
+		environment: req.params.name
 	};
 
 	// Saving it to the database.
@@ -52,19 +54,24 @@ function listLatestPerServer(req, res, next) {
 	deployment.find({ server: req.params.name }, null, { sort: { datestamp: -1 } },function(err, deploys) { res.send(deploys); });
 }
 
-function listLatestForAll(req, res, next) {
+function listLatestPerEnvironment(req, res, next) {
 	console.log("Quering..."+req.params.name);
 
+	deployment.find({ environment: req.params.name }, null, { sort: { datestamp: -1 }, limit: 1 },function(err, deploys) { res.send(deploys); });
+}
+
+function listLatestForAll(req, res, next) {
 // This will group by server and release. It will have multiple server entries because each server will have multiple releases.
-	//deployment.aggregate([{ $project: { server: 1, release: 1, datestamp: 1 }, $group: { _id: { release: "$release" },  mostRecent: { $max: "$datestamp" } } } ], 
-	deployment.aggregate([{ $group: { _id: { release: "$release" },  mostRecent: { $max: "$datestamp" } } } ], 
+	//deployment.aggregate([{$project:{server: 1, release: 1, datestamp: 1}},{ $group: { _id: { server: "$server", release: "$release" },  mostRecent: { $max: "$datestamp" } } } ], 
+	deployment.aggregate([{$project:{server: 1, release: 1, datestamp: 1}}, { $group: { _id: { server: "$server" },  mostRecent: { $max: "$datestamp" } } } ], 
 		function(err, deploys) { res.send(deploys); });
 }
 
 var server = restify.createServer();
 server.use(restify.bodyParser());
 server.get('/latest/server/:name', listLatestPerServer);
-server.get('/latest/_all/:name', listLatestForAll);
+server.get('/latest/_all', listLatestForAll);
+server.get('/latest/_enviro/:name', listLatestPerEnvironment);
 server.get('/deploy/:name', respond);
 server.post('/deploy/:name', respond);
 server.head('/deploy/:name', respond);
