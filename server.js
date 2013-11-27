@@ -24,7 +24,7 @@ var config = require('./config.js').configure(env);
 var deployment = mongoose.model('Deployments', deploySchema);
 	
 function respond(req, res, next) {
-	console.log(req.params);	
+//	console.log(req.params);	
 	if (req.params.server === undefined) {
 	    return next(new restify.InvalidArgumentError('Server must be supplied'))
   	}
@@ -45,9 +45,9 @@ function respond(req, res, next) {
 
 	// Saving it to the database.
 	deployment.findOneAndUpdate({ server: req.params.server, release: req.params.release, codebase: req.params.codebase }, incomingDeployment, options, function (err) {
-		if (err) {console.log ('Error on save!')} else {console.log ('Saved!')}
+		if (err) {console.log ('Error on save for '+req.params)} else {console.log ('Saved!')}
 	});
-  	res.send('hello ' + req.params.server);
+  	res.send('Okay ' + req.params.server);
 }
 
 function findlatest(server) {
@@ -55,13 +55,13 @@ function findlatest(server) {
 }
 
 function listLatestPerServer(req, res, next) {
-	console.log("Quering..."+req.params.name);
+//	console.log("Quering..."+req.params.name);
 
 	deployment.find({ server: req.params.name }, null, { sort: { datestamp: -1 } },function(err, deploys) { res.send(deploys); });
 }
 
 function listLatestPerEnvironment(req, res, next) {
-	console.log("Quering..."+req.params.name);
+//	console.log("Quering..."+req.params.name);
 
 	deployment.find({ environment: req.params.name }, null, { sort: { datestamp: -1 }, limit: 1 },function(err, deploys) { res.send(deploys); });
 }
@@ -84,7 +84,7 @@ server.head('/deploy/:name', respond);
 
 // Here we find an appropriate database to connect to, defaulting to
 // localhost if we don't find one.
-var uristring = 'mongodb://deployuser:SluRM15@'+MONGOIP+':'+MONGOPORT+'/deployinator';
+var uristring = 'mongodb://deployuser:SluRM15@'+MONGOIP+':'+MONGOPORT+'/deploy';
 
 // Makes connection asynchronously.  Mongoose will queue up database
 // operations and release them when the connection is complete.
@@ -96,7 +96,7 @@ mongoose.connect(uristring, function (err, res) {
 
 // Deployment Schema setup, Mongo connected, time to start listening
 
-		server.listen(config.server.port, function() {
+		server.listen(PORT, IPADDRESS, function() {
 		  	console.log('%s listening at %s', server.name, server.url);
 		});
 
