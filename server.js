@@ -1,3 +1,6 @@
+//
+// Deploy/server.js - This is the heart of the server. Most all the work gets done in here.
+//
 var PORT = process.env.OPENSHIFT_NODEJS_PORT || 8080;
 var IPADDRESS = process.env.OPENSHIFT_NODEJS_IP || '127.0.0.1';
 var MONGOIP = process.env.OPENSHIFT_MONGODB_DB_HOST || '127.0.0.1';
@@ -45,9 +48,9 @@ function respond(req, res, next) {
 
 	// Saving it to the database.
 	deployment.findOneAndUpdate({ server: req.params.server, release: req.params.release, codebase: req.params.codebase }, incomingDeployment, options, function (err) {
-		if (err) {console.log ('Error on save for '+req.params)} else {console.log ('Saved!')}
+		if (err) {console.log ('Error on save for '+req.params)} else {}
 	});
-  	res.send('Okay ' + req.params.server);
+  	res.send('OK');
 }
 
 function findlatest(server) {
@@ -60,24 +63,51 @@ function listLatestPerServer(req, res, next) {
 	deployment.find({ server: req.params.name }, null, { sort: { datestamp: -1 } },function(err, deploys) { res.send(deploys); });
 }
 
+function listEnvironments(req, res, next) { 
+	deployment.aggregate([{ $group: { _id: { environment: "$environment" } } } ], 
+		function(err, deploys) { res.send(deploys); });
+}
+
+function listServersPerEnvironment(req, res, next) {
+	deployment.aggregate([{ $group: { _id: { server: "$server"}, $find: { enviroment: req.params.name } } } ], 
+		function(err, deploys) { res.send(deploys); });
+}
+
 function listLatestPerEnvironment(req, res, next) {
 //	console.log("Quering..."+req.params.name);
 
-	deployment.find({ environment: req.params.name }, null, { sort: { datestamp: -1 }, limit: 1 },function(err, deploys) { res.send(deploys); });
+//	deployment.aggregate([{$project:{server: 1, release: 1, codebase: 1, datestamp: 1}}, { $group: { _id: { server: "$server", codebase: "$codebase" },  mostRecent: { $max: "$datestamp" } } } ], 
+
+	deployment.find({ environment: req.params.name }, null, { sort: { datestamp: -1, codebase: 1, location: 1, server: -1 }},
+//	deployment.aggregate({ environment: req.params.name}).group({ _id : "$server"}).exec(
+		function (err, deploys) {
+			res.send(deploys);
+	});
 }
+
+function listHistoryPerEnvironment(req, res, next) {
+	deployment.find({ environment: req.params.name }, null, { sort: { datestamp: -1, codebase: 1, location: 1, server: -1 }},function(err, deploys) { res.send(deploys); });
+//	deployment.aggregate([{ $group: { _id: { environment: req.params.name },  mostRecent: { $max: "$datestamp" } } } ], 
+//		function(err, deploys) { res.send(deploys); });
+}
+
 
 function listLatestForAll(req, res, next) {
 // This will group by server and release. It will have multiple server entries because each server will have multiple releases.
-	//deployment.aggregate([{$project:{server: 1, release: 1, datestamp: 1}},{ $group: { _id: { server: "$server", release: "$release" },  mostRecent: { $max: "$datestamp" } } } ], 
 	deployment.aggregate([{$project:{server: 1, release: 1, datestamp: 1}}, { $group: { _id: { server: "$server" },  mostRecent: { $max: "$datestamp" } } } ], 
 		function(err, deploys) { res.send(deploys); });
 }
 
 var server = restify.createServer();
 server.use(restify.bodyParser());
+server.get('/hello/:name',function(req, res, next) { res.send("Hey, "+req.params.name+". We're in the pipe, 5 by 5"); });
 server.get('/latest/server/:name', listLatestPerServer);
 server.get('/latest/_all', listLatestForAll);
 server.get('/latest/_enviro/:name', listLatestPerEnvironment);
+server.get('/history/_enviro/:name', listHistoryPerEnvironment);
+server.get('/list/environments', listEnvironments);
+server.get('/list/_enviro/:name', listServersPerEnvironment);
+server.get('/list/_all', listEnvironments);
 server.get('/deploy/:name', respond);
 server.post('/deploy/:name', respond);
 server.head('/deploy/:name', respond);
